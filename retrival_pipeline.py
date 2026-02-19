@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
-from dataclasses import dataclass, field
-from typing import List, Dict, Optional
+from dataclasses import dataclass
+from typing import List, Dict
+
+from groq import Groq
 
 from langchain_core.documents import Document
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -48,6 +51,60 @@ log = _get_logger("retrieval")
 
 
 # -----------------------------------------------------------------------------
+# Groq client setup.
+#
+# Reads GROQ_API_KEY from environment. Raises clearly if the key is missing.
+# Model is pinned to llama-3.3-70b-versatile.
+# -----------------------------------------------------------------------------
+GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_API_KEY = "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" #os.environ.get("GROQ_API_KEY")
+
+
+def _get_groq_client() -> Groq:
+    api_key = GROQ_API_KEY
+
+    if not api_key:
+        log.error("GROQ_API_KEY environment variable not set")
+        raise EnvironmentError(
+            "GROQ_API_KEY is not set. Export it before running:\n"
+            "  export GROQ_API_KEY=your_key_here"
+        )
+
+    log.info("Groq client initialised", extra={"model": GROQ_MODEL})
+    return Groq(api_key=api_key)
+
+
+def _call_groq(client: Groq, system_prompt: str, user_prompt: str) -> str:
+    """Low-level wrapper around the Groq chat completions endpoint."""
+    log.info(
+        "Calling Groq LLM",
+        extra={
+            "model": GROQ_MODEL,
+            "system_prompt_length": len(system_prompt),
+            "user_prompt_length": len(user_prompt),
+        },
+    )
+
+    response = client.chat.completions.create(
+        model=GROQ_MODEL,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.3,
+    )
+
+    result = response.choices[0].message.content.strip()
+
+    log.info(
+        "Groq LLM response received",
+        extra={"response_length": len(result)},
+    )
+
+    return result
+
+
+# -----------------------------------------------------------------------------
 # RetrievalResult holds the aggregated role/tools/projects for a matched role.
 # -----------------------------------------------------------------------------
 @dataclass
@@ -64,6 +121,25 @@ class RetrievalResult:
             "projects": self.projects,
             "score": round(self.score, 4),
         }
+
+    def as_text_block(self) -> str:
+        """Renders the result as a readable text block for LLM prompts."""
+        return (
+            f"Role: {self.role}\n"
+            f"Tools: {self.tools or '—'}\n"
+            f"Projects: {self.projects or '—'}\n"
+            f"Similarity Score (L2, lower=better): {round(self.score, 4)}"
+        )
+
+
+# -----------------------------------------------------------------------------
+# LLMAnalysis holds the three outputs produced by the Groq LLM calls.
+# -----------------------------------------------------------------------------
+@dataclass
+class LLMAnalysis:
+    summary_and_ranking: str
+    fit_analysis: str
+    cover_letter: str
 
 
 # -----------------------------------------------------------------------------
@@ -205,6 +281,187 @@ def aggregate_results(
 
 
 # -----------------------------------------------------------------------------
+# _build_roles_context serialises all RetrievalResult objects into a single
+# text block suitable for injection into LLM prompts.
+# -----------------------------------------------------------------------------
+def _build_roles_context(results: List[RetrievalResult]) -> str:
+    return "\n\n".join(
+        f"[{i}] {r.as_text_block()}" for i, r in enumerate(results, start=1)
+    )
+
+
+# -----------------------------------------------------------------------------
+# llm_summarise_and_rank asks the LLM to summarise and rank the retrieved
+# roles against the job query.
+#
+# Example:
+# INPUT:
+#   query        = "LLM evaluation engineer with C++ and Docker..."
+#   results      = [RetrievalResult(...), ...]
+#   groq_client  = <Groq instance>
+#
+# OUTPUT:
+#   Plain-text summary with ranked roles and brief reasoning per role.
+# -----------------------------------------------------------------------------
+def llm_summarise_and_rank(
+    query: str,
+    results: List[RetrievalResult],
+    groq_client: Groq,
+) -> str:
+    log.info("LLM task: summarise and rank", extra={"role_count": len(results)})
+
+    system_prompt = (
+        "You are a technical recruiter assistant. "
+        "Given a job description and a list of candidate roles retrieved from a vector database, "
+        "summarise each role and rank them from most to least relevant to the job. "
+        "For each role provide a one-sentence justification. "
+        "Be concise and structured."
+    )
+
+    user_prompt = (
+        f"JOB DESCRIPTION:\n{query}\n\n"
+        f"RETRIEVED ROLES:\n{_build_roles_context(results)}\n\n"
+        "Task: Summarise each role in one sentence, then provide a final ranked list "
+        "(1 = best match) with a brief reason for each ranking."
+    )
+
+    result = _call_groq(groq_client, system_prompt, user_prompt)
+
+    log.info("LLM summarise and rank complete")
+
+    return result
+
+
+# -----------------------------------------------------------------------------
+# llm_fit_analysis asks the LLM to produce a fit analysis including an
+# estimated match percentage and detailed reasoning per role.
+#
+# Example:
+# INPUT:
+#   query        = "LLM evaluation engineer with C++ and Docker..."
+#   results      = [RetrievalResult(...), ...]
+#   groq_client  = <Groq instance>
+#
+# OUTPUT:
+#   Structured fit analysis with match % and reasoning for each role.
+# -----------------------------------------------------------------------------
+def llm_fit_analysis(
+    query: str,
+    results: List[RetrievalResult],
+    groq_client: Groq,
+) -> str:
+    log.info("LLM task: fit analysis", extra={"role_count": len(results)})
+
+    system_prompt = (
+        "You are a technical recruiter performing a detailed fit analysis. "
+        "For each candidate role, compare it against the job description and produce: "
+        "1) A match percentage (0-100%) based on skills, tools, and project relevance. "
+        "2) Key strengths — what aligns well. "
+        "3) Key gaps — what is missing or misaligned. "
+        "Be analytical and specific."
+    )
+
+    user_prompt = (
+        f"JOB DESCRIPTION:\n{query}\n\n"
+        f"RETRIEVED ROLES:\n{_build_roles_context(results)}\n\n"
+        "Task: For EACH role produce a fit analysis with match %, strengths, and gaps."
+    )
+
+    result = _call_groq(groq_client, system_prompt, user_prompt)
+
+    log.info("LLM fit analysis complete")
+
+    return result
+
+
+# -----------------------------------------------------------------------------
+# llm_cover_letter asks the LLM to draft a tailored cover letter using the
+# best-matching role's tools and projects aligned to the job description.
+#
+# Example:
+# INPUT:
+#   query        = "LLM evaluation engineer with C++ and Docker..."
+#   results      = [RetrievalResult(...), ...]  # first item is best match
+#   groq_client  = <Groq instance>
+#
+# OUTPUT:
+#   A professional cover letter tailored to the job and best-matched role.
+# -----------------------------------------------------------------------------
+def llm_cover_letter(
+    query: str,
+    results: List[RetrievalResult],
+    groq_client: Groq,
+) -> str:
+    log.info(
+        "LLM task: cover letter",
+        extra={"best_match_role": results[0].role if results else "N/A"},
+    )
+
+    best_match = results[0] if results else None
+
+    system_prompt = (
+        "You are a professional career coach. "
+        "Draft a concise, compelling cover letter (3-4 paragraphs) for a candidate "
+        "applying to the provided job. Use the candidate's role, tools, and project "
+        "experience to tailor the letter. Keep the tone professional and enthusiastic."
+    )
+
+    candidate_context = (
+        best_match.as_text_block()
+        if best_match
+        else "No candidate role information available."
+    )
+
+    user_prompt = (
+        f"JOB DESCRIPTION:\n{query}\n\n"
+        f"CANDIDATE PROFILE (best matched role):\n{candidate_context}\n\n"
+        "Task: Write a tailored cover letter for this candidate applying to the above job."
+    )
+
+    result = _call_groq(groq_client, system_prompt, user_prompt)
+
+    log.info("LLM cover letter complete")
+
+    return result
+
+
+# -----------------------------------------------------------------------------
+# run_llm_analysis orchestrates all three LLM tasks and returns an LLMAnalysis.
+#
+# Example:
+# INPUT:
+#   query   = "LLM evaluation engineer..."
+#   results = [RetrievalResult(...), ...]
+#
+# OUTPUT:
+#   LLMAnalysis(
+#     summary_and_ranking = "...",
+#     fit_analysis        = "...",
+#     cover_letter        = "..."
+#   )
+# -----------------------------------------------------------------------------
+def run_llm_analysis(
+    query: str,
+    results: List[RetrievalResult],
+) -> LLMAnalysis:
+    log.info("Starting LLM analysis pipeline", extra={"role_count": len(results)})
+
+    groq_client = _get_groq_client()
+
+    summary_and_ranking = llm_summarise_and_rank(query, results, groq_client)
+    fit_analysis = llm_fit_analysis(query, results, groq_client)
+    cover_letter = llm_cover_letter(query, results, groq_client)
+
+    log.info("LLM analysis pipeline complete")
+
+    return LLMAnalysis(
+        summary_and_ranking=summary_and_ranking,
+        fit_analysis=fit_analysis,
+        cover_letter=cover_letter,
+    )
+
+
+# -----------------------------------------------------------------------------
 # retrieve fetches roles, tools, and projects matching the provided query.
 #
 # This is the main entry point for the retrieval pipeline.
@@ -266,6 +523,25 @@ def print_results(results: List[RetrievalResult]) -> None:
 
 
 # -----------------------------------------------------------------------------
+# print_llm_analysis pretty-prints all three LLM outputs to stdout.
+# -----------------------------------------------------------------------------
+def print_llm_analysis(analysis: LLMAnalysis) -> None:
+    sections = [
+        ("SUMMARY & RANKING", analysis.summary_and_ranking),
+        ("FIT ANALYSIS", analysis.fit_analysis),
+        ("COVER LETTER", analysis.cover_letter),
+    ]
+
+    for title, content in sections:
+        print(f"\n{'=' * 60}")
+        print(f"  {title}")
+        print(f"{'=' * 60}")
+        print(content)
+
+    print(f"\n{'=' * 60}\n")
+
+
+# -----------------------------------------------------------------------------
 # Main — run with the provided job description query.
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
@@ -309,7 +585,12 @@ Offer Details:
 
     log.info("Script started")
 
+    # ── Stage 1: Vector retrieval ─────────────────────────────────────────────
     results = retrieve(query, store_path="vector_store", top_k=10)
     print_results(results)
+
+    # ── Stage 2: LLM analysis via Groq ───────────────────────────────────────
+    analysis = run_llm_analysis(query, results)
+    print_llm_analysis(analysis)
 
     log.info("Script finished", extra={"roles_matched": len(results)})

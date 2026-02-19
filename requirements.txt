@@ -1,7 +1,19 @@
-langchain-core>=0.3.0,<0.4.0
-langchain-text-splitters>=0.3.0,<0.4.0
-langchain-community>=0.3.0,<0.4.0
+# LangChain stack — all pinned to the 0.3.x series.
+# This satisfies langchain 0.3.27 (core<1.0.0, text-splitters<1.0.0)
+# and avoids conflicts with langchain-classic installed in the environment.
+# The code does NOT import langchain or langchain-classic directly,
+# so only these three packages are needed at runtime.
+langchain-core>=0.3.72,<1.0.0
+langchain-text-splitters>=0.3.9,<1.0.0
+langchain-community>=0.3.27,<1.0.0
+
+# Embeddings & vector store
 sentence-transformers>=3.0.0,<4.0.0
 faiss-cpu>=1.8.0,<2.0.0
+
+# HuggingFace / PyTorch backend
 transformers>=4.44.0,<5.0.0
 torch>=2.4.0,<3.0.0
+
+# Groq LLM client
+groq>=0.9.0,<1.0.0
