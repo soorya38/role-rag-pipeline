@@ -1,0 +1,19 @@
+role: Backend Developer
+role's tools: Go, PostgreSQL, Docker, Redis
+role's projects: Authentication API, Payment Service, Metrics Collector
+
+role: Frontend Developer
+role's tools: React, Tailwind CSS, TypeScript, Vite
+role's projects: Admin Dashboard, Landing Page, Analytics UI
+
+role: DevOps Engineer
+role's tools: Kubernetes, Docker, Prometheus, Grafana, Terraform
+role's projects: CI/CD Pipeline, Monitoring Stack, Cloud Infra Setup
+
+role: AI Engineer
+role's tools: Python, PyTorch, HuggingFace, LangChain
+role's projects: Chatbot System, RAG Pipeline, NLP Classifier
+
+role: ML Engineer
+role's tools: Python, C++, Git, Docker, PyTorch, HuggingFace, LangChain
+role's projects: LLM Evaluation Framework, SWE Benchmark Dataset, Automated Issue Triage System
