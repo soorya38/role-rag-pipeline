@@ -1,8 +1,7 @@
-langchain-core
-langchain-text-splitters
-langchain-community
-sentence-transformers
-faiss-cpu
-transformers
-torch
-
+langchain-core>=0.3.0,<0.4.0
+langchain-text-splitters>=0.3.0,<0.4.0
+langchain-community>=0.3.0,<0.4.0
+sentence-transformers>=3.0.0,<4.0.0
+faiss-cpu>=1.8.0,<2.0.0
+transformers>=4.44.0,<5.0.0
+torch>=2.4.0,<3.0.0
