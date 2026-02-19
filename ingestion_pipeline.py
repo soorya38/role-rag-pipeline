@@ -8,6 +8,9 @@ from uuid import uuid4
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
+
 
 # CHUNK_SIZE defines how large each text chunk should be when preparing
 # data for RAG/embedding pipelines.
@@ -229,17 +232,49 @@ def ingest_roles(file_path: str) -> List[Document]:
 
 
 # -----------------------------------------------------------------------------
-# Standalone execution example.
+# generate_local_embeddings creates embeddings using a local HuggingFace model.
+#
+# Uses sentence-transformers model locally (no external API required).
 #
 # Example:
-#   python script.py
+# INPUT:
+#   docs = [Document("Backend Developer"), ...]
 #
 # OUTPUT:
-#   Generated 5 chunks
-#   ---
-#   Go, PostgreSQL
-#   {'role': 'Backend Developer', 'section': 'tools', ...}
+#   embeddings object ready for vector DB ingestion.
 # -----------------------------------------------------------------------------
+def generate_local_embeddings():
+    return HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
+
+
+# -----------------------------------------------------------------------------
+# store_in_local_vector_db stores documents + embeddings in FAISS vector DB.
+#
+# FAISS runs fully locally and supports similarity search efficiently.
+#
+# Example:
+# INPUT:
+#   docs = chunked documents
+#
+# OUTPUT:
+#   persisted FAISS index in ./vector_store directory.
+# -----------------------------------------------------------------------------
+def store_in_local_vector_db(docs: List[Document]):
+
+    embeddings = generate_local_embeddings()
+
+    vector_store = FAISS.from_documents(
+        docs,
+        embedding=embeddings,
+    )
+
+    vector_store.save_local("vector_store")
+
+    return vector_store
+
+
 if __name__ == "__main__":
     FILE_PATH = "demofile.txt"
 
@@ -251,3 +286,8 @@ if __name__ == "__main__":
         print("\n---")
         print(d.page_content)
         print(d.metadata)
+
+    # Generate embeddings + store in local FAISS vector DB
+    store_in_local_vector_db(docs)
+
+    print("\nEmbeddings stored in local FAISS vector DB.")
