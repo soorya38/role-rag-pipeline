@@ -545,42 +545,73 @@ def print_llm_analysis(analysis: LLMAnalysis) -> None:
 # Main — run with the provided job description query.
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
-    query = """About the job
+    query = """About The Role
 
-About the projects: we are building LLM evaluation and training datasets to train LLM to work on realistic software engineering problems. One of our approaches, in this project, is to build verifiable SWE tasks based on public repository histories in a synthetic approach with human-in-the-loop; while expanding the dataset coverage to different types of tasks in terms of programming language, difficulty level, and etc.
+We are seeking a skilled Backend Developer to join our engineering team. Unlike traditional siloed development roles, this position is designed for an engineer who values end-to-end ownership. You will not only write code but also ensure its performance, reliability, and stability in a live production environment.
 
-About the Role:
-We are looking for experienced software engineers (tech lead level) who are familiar with high-quality public GitHub repositories and can contribute to this project. This role involves hands-on software engineering work, including development environment automation, issue triaging, and evaluating test coverage and quality
+You will drive performance optimization across our AWS-hosted Node.js, GraphQL, and MongoDB stack. This is a hands-on development role where "support" means engineering solutions to complex production challenges and preventing them from recurring. You will act as a critical bridge between product and engineering, gaining deep system mastery through direct involvement in quality assurance and release cycles.
 
-Why Join Us?
-Turing is one of the world's fastest-growing AI companies accelerating the advancement and deployment of powerful AI systems. You'll be at the forefront of evaluating how LLMs interact with real code, influencing the future of AI-assisted software development. This is a unique opportunity to blend practical software engineering with AI research.
+Work Schedule
 
-What does day-to-day look like:
-* Analyze and triage GitHub issues across trending open-source libraries.
-* Set up and configure code repositories, including Dockerization and environment setup.
-* Evaluating unit test coverage and quality.
-* Modify and run codebases locally to assess LLM performance in bug-fixing scenarios.
-* Collaborate with researchers to design and identify repositories and issues that are challenging for LLMs.
-* Opportunities to lead a team of junior engineers to collaborate on projects.
+Mandatory Overlap: You must be available to collaborate with the US team between 11:00 PM IST and 3:00 AM IST.
 
-Required Skills:
-* Minimum 3+ years of overall experience
-* Strong experience with at least one of the following languages: C++
-* Proficiency with Git, Docker, and basic software pipeline setup.
-* Ability to understand and navigate complex codebases.
-* Comfortable running, modifying, and testing real-world projects locally.
-* Experience contributing to or evaluating open-source projects is a plus.
+Purpose: This overlap ensures seamless handoffs, collaborative debugging, and direct interaction with US-based product and engineering teams.
 
-Nice to Have:
-* Previous participation in LLM research or evaluation projects.
-* Experience building or testing developer tools or automation agents.
-* Perks of Freelancing With Turing:
-* Work in a fully remote environment.
-* Opportunity to work on cutting-edge AI projects with leading LLM companies.
+Key Responsibilities
 
-Offer Details:
-* Commitments Required: At least 4 hours per day and minimum 20 hours per week with overlap of 4 hours with PST. (We have 3 options of time commitment: 20 hrs/week, 30 hrs/week or 40 hrs/week)
-* Employment type: Contractor assignment (no medical/paid leave)
+Core Development & Performance Engineering
+
+Design & Optimize: Write and fine-tune complex MongoDB aggregation pipelines for high-volume analytics, dashboards, and large dataset operations.
+
+Backend Architecture: Maintain and enhance Node.js and GraphQL services, ensuring scalable schemas and efficient resolvers.
+
+System Reliability: Take ownership of production uptime by diagnosing and resolving backend issues within the AWS ecosystem (Elastic Beanstalk, EC2, CloudFront).
+
+Production Ownership & Quality Assurance
+
+Release Integrity: Collaborate with QA teams during pre-release testing to gain a holistic understanding of new features, ensuring you know the code inside and out before it hits production.
+
+Root Cause Analysis: Go beyond "patching" bugs. Analyze logs and metrics (CloudWatch, ELB) to identify architectural bottlenecks and implement long-term reliability improvements.
+
+Incident Response: Participate in on-call rotations to maintain service availability, acting as the engineering authority during incident response.
+
+Technical Requirements
+
+Core Stack:
+
+MongoDB: Deep expertise in aggregation frameworks and query optimization is essential.
+
+Node.js: Proficiency with Express or Apollo Server.
+
+GraphQL: Strong grasp of schema design and resolver implementation.
+
+Infrastructure & Tooling:
+
+AWS: Hands-on experience with Beanstalk, EC2, S3, and ELB.
+
+Observability: Familiarity with logging tools (CloudWatch, New Relic, or Datadog) to trace data flow and performance issues.
+
+DevOps: Experience with CI/CD pipelines (GitHub Actions) and deployment troubleshooting is highly preferred.
+
+Soft Skills & Mindset
+
+Ownership: You view code in production as your responsibility. You are focused on long-term stability rather than quick fixes.
+
+Communication: You can clearly articulate technical complexities to distributed teams across different time zones.
+
+Adaptability: You thrive in a startup environment and are eager to learn the product inside-out through direct exposure to QA and triage processes.
+
+Engagement Type: Fulltime
+
+Direct-hire on the Delightree Payroll
+
+Job Type: Permanent
+
+Location: Remote
+
+Working time: 11 PM to 3 AM IST ( Rest hours anytime during day time)
+
+Interview Process - 2 Rounds
 """
 
     log.info("Script started")

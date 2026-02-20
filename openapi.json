@@ -1,0 +1,217 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Role RAG API",
+    "description": "API for fetching candidate roles using a RAG pipeline based on job descriptions.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/match": {
+      "post": {
+        "summary": "Match Role",
+        "operationId": "match_role_api_match_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LLMAnalysisSchema": {
+        "properties": {
+          "summary_and_ranking": {
+            "type": "string",
+            "title": "Summary And Ranking"
+          },
+          "fit_analysis": {
+            "type": "string",
+            "title": "Fit Analysis"
+          },
+          "cover_letter": {
+            "type": "string",
+            "title": "Cover Letter"
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary_and_ranking",
+          "fit_analysis",
+          "cover_letter"
+        ],
+        "title": "LLMAnalysisSchema"
+      },
+      "MatchRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "top_k": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top K",
+            "default": 10
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "MatchRequest"
+      },
+      "MatchResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalResultSchema"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "analysis": {
+            "$ref": "#/components/schemas/LLMAnalysisSchema"
+          }
+        },
+        "type": "object",
+        "required": [
+          "results",
+          "analysis"
+        ],
+        "title": "MatchResponse"
+      },
+      "RetrievalResultSchema": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "tools": {
+            "type": "string",
+            "title": "Tools"
+          },
+          "projects": {
+            "type": "string",
+            "title": "Projects"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "tools",
+          "projects",
+          "score"
+        ],
+        "title": "RetrievalResultSchema"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
