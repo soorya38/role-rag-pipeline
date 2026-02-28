@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ---------------------------------------------------------------------------
@@ -52,8 +52,8 @@ class LLMAnalysis:
 
 class MatchRequest(BaseModel):
     user_id: str
-    query: str
-    top_k: int = 10
+    query: str = Field(..., min_length=1)
+    top_k: int = Field(default=10, ge=1)
 
 
 class IngestResponse(BaseModel):
@@ -78,4 +78,6 @@ class LLMAnalysisSchema(BaseModel):
 class MatchResponse(BaseModel):
     user_id: str
     results: List[RetrievalResultSchema]
-    analysis: LLMAnalysisSchema
+    # None when LLM is unavailable (e.g. missing/invalid GROQ_API_KEY)
+    analysis: Optional[LLMAnalysisSchema] = None
+    analysis_error: Optional[str] = None

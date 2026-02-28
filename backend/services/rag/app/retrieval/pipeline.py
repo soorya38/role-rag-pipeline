@@ -187,18 +187,23 @@ def llm_cover_letter(query: str, results: List[RetrievalResult], client: Groq) -
     return result
 
 
-def run_llm_analysis(query: str, results: List[RetrievalResult]) -> LLMAnalysis:
+def run_llm_analysis(query: str, results: List[RetrievalResult]) -> tuple[LLMAnalysis | None, str | None]:
+    """Run LLM analysis. Returns (LLMAnalysis, None) on success or (None, error_msg) on failure."""
     log.info("Starting LLM analysis pipeline", extra={"role_count": len(results)})
-    client = _get_groq_client()
-    summary_and_ranking = llm_summarise_and_rank(query, results, client)
-    fit_analysis = llm_fit_analysis(query, results, client)
-    cover_letter = llm_cover_letter(query, results, client)
-    log.info("LLM analysis pipeline complete")
-    return LLMAnalysis(
-        summary_and_ranking=summary_and_ranking,
-        fit_analysis=fit_analysis,
-        cover_letter=cover_letter,
-    )
+    try:
+        client = _get_groq_client()
+        summary_and_ranking = llm_summarise_and_rank(query, results, client)
+        fit_analysis = llm_fit_analysis(query, results, client)
+        cover_letter = llm_cover_letter(query, results, client)
+        log.info("LLM analysis pipeline complete")
+        return LLMAnalysis(
+            summary_and_ranking=summary_and_ranking,
+            fit_analysis=fit_analysis,
+            cover_letter=cover_letter,
+        ), None
+    except Exception as e:
+        log.warning(f"LLM analysis failed (returning results without analysis): {e}")
+        return None, str(e)
 
 
 # -----------------------------------------------------------------------------

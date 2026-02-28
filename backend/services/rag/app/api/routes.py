@@ -84,8 +84,8 @@ def match_role(request: MatchRequest):
             top_k=request.top_k,
         )
 
-        # 2. LLM analysis
-        analysis = run_llm_analysis(request.query, results)
+        # 2. LLM analysis (degrades gracefully — returns None on error)
+        analysis, analysis_error = run_llm_analysis(request.query, results)
 
         # 3. Format response
         results_formatted = [
@@ -98,16 +98,21 @@ def match_role(request: MatchRequest):
             for r in results
         ]
 
-        analysis_formatted = LLMAnalysisSchema(
-            summary_and_ranking=analysis.summary_and_ranking,
-            fit_analysis=analysis.fit_analysis,
-            cover_letter=analysis.cover_letter,
+        analysis_formatted = (
+            LLMAnalysisSchema(
+                summary_and_ranking=analysis.summary_and_ranking,
+                fit_analysis=analysis.fit_analysis,
+                cover_letter=analysis.cover_letter,
+            )
+            if analysis
+            else None
         )
 
         return MatchResponse(
             user_id=request.user_id,
             results=results_formatted,
             analysis=analysis_formatted,
+            analysis_error=analysis_error,
         )
 
     except FileNotFoundError as e:
