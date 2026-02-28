@@ -1,0 +1,11 @@
+role: Data Scientist
+role's tools: Python, TensorFlow, Scikit-learn, Pandas, Jupyter
+role's projects: Customer Churn Prediction, Market Trend Forecaster
+
+role: ML Engineer
+role's tools: PyTorch, HuggingFace, Docker, FastAPI, Kubeflow
+role's projects: LLM Finetuning Pipeline, Real-time Inference Service
+
+role: QA Engineer
+role's tools: Selenium, Pytest, Postman, JIRA, Cypress
+role's projects: Automated Regression Suite, API Integration Testing
