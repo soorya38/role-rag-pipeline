@@ -42,7 +42,7 @@ async def ingest_roles(
     file: UploadFile = File(..., description="Plain-text roles file (UTF-8)."),
 ):
     try:
-        log.info("Received ingest request", extra={"user_id": user_id, "filename": file.filename})
+        log.info("Received ingest request", extra={"user_id": user_id, "upload_file": file.filename})
 
         raw_bytes = await file.read()
         content = raw_bytes.decode("utf-8")

@@ -1,0 +1,7 @@
+role: Lead Frontend Developer
+role's tools: React, Next.js, TypeScript, Tailwind CSS, Framer Motion
+role's projects: Real-time Analytics Dashboard, Interactive Component Library
+
+role: UI/UX Designer
+role's tools: Figma, Adobe XD, Sketch, HTML/CSS
+role's projects: Mobile-first Design System, SaaS Platform Overhaul

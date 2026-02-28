@@ -1,0 +1,7 @@
+role: Senior Backend Engineer
+role's tools: Python, FastAPI, Docker, PostgreSQL, Redis
+role's projects: Scalable E-commerce API, Distributed Task Queue with Celery
+
+role: DevOps Specialist
+role's tools: AWS (EC2, S3, RDS), Terraform, Kubernetes, GitHub Actions
+role's projects: Multi-region Cloud Migration, CI/CD Pipeline Automation
