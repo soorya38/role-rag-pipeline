@@ -1,0 +1,268 @@
+openapi: "3.1.0"
+
+info:
+  title: Role RAG API
+  version: "2.0.0"
+  description: |
+    A multi-user Retrieval-Augmented Generation (RAG) service that matches candidate roles
+    to job descriptions using per-user FAISS vector stores and a Groq LLM backend.
+
+    **Multi-user isolation:** Each user has a dedicated FAISS index stored at
+    `vector_store/<user_id>/`. Ingest roles for a user before running matches.
+  contact:
+    name: Role RAG Team
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+tags:
+  - name: health
+    description: Service liveness probes
+  - name: ingestion
+    description: Build or refresh a user's role index
+  - name: matching
+    description: Role-matching and LLM analysis endpoints
+
+paths:
+  /health:
+    get:
+      operationId: health_check
+      tags: [health]
+      summary: Liveness probe
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+
+  /api/ingest:
+    post:
+      operationId: ingest_roles
+      tags: [ingestion]
+      summary: Ingest a roles file for a specific user
+      description: |
+        Accepts a plain-text roles file and a `user_id`. Parses roles, generates embeddings,
+        and stores the resulting FAISS index at `vector_store/<user_id>/`.
+
+        Re-ingesting for the same `user_id` **overwrites** their existing index.
+
+        **Roles file format:**
+        ```
+        role: Backend Developer
+        role's tools: Python, FastAPI, Docker
+        role's projects: LLM Evaluation Pipeline
+
+        role: DevOps Engineer
+        role's tools: AWS, Terraform, GitHub Actions
+        role's projects: CI/CD Automation
+        ```
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [user_id, file]
+              properties:
+                user_id:
+                  type: string
+                  description: Unique identifier for the user.
+                  example: user1
+                file:
+                  type: string
+                  format: binary
+                  description: Plain-text UTF-8 roles file.
+      responses:
+        "200":
+          description: Ingestion successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestResponse"
+              example:
+                user_id: user1
+                chunks_indexed: 42
+                message: "Successfully indexed 42 chunks for user 'user1'."
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPError"
+
+  /api/match:
+    post:
+      operationId: match_role
+      tags: [matching]
+      summary: Match a job description to candidate roles for a specific user
+      description: |
+        Searches only the **requesting user's** FAISS index. Returns a 404 if the user
+        has not yet ingested any roles via `POST /api/ingest`.
+
+        Runs three sequential Groq LLM tasks:
+        1. **Summary & Ranking** — ranks roles from best to least relevant.
+        2. **Fit Analysis** — per-role match %, strengths, and gaps.
+        3. **Cover Letter** — tailored cover letter based on the best-matched role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchRequest"
+            examples:
+              basic:
+                summary: Match for user1
+                value:
+                  user_id: user1
+                  query: "Senior Python developer with FastAPI, Docker, and AWS experience."
+                  top_k: 5
+      responses:
+        "200":
+          description: Successful match response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchResponse"
+        "404":
+          description: No vector index found for the given user_id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPError"
+              example:
+                detail: "No vector store found for user 'user1'. Please ingest a roles file first via POST /api/ingest."
+        "422":
+          description: Validation error — malformed request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPError"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+          example: ok
+
+    IngestResponse:
+      type: object
+      required: [user_id, chunks_indexed, message]
+      properties:
+        user_id:
+          type: string
+          example: user1
+        chunks_indexed:
+          type: integer
+          description: Total number of text chunks embedded and stored.
+          example: 42
+        message:
+          type: string
+          example: "Successfully indexed 42 chunks for user 'user1'."
+
+    MatchRequest:
+      type: object
+      required: [user_id, query]
+      properties:
+        user_id:
+          type: string
+          description: The user whose index should be searched.
+          example: user1
+        query:
+          type: string
+          minLength: 1
+          description: The full job description text to match against candidate roles.
+          example: "We are seeking a Backend Developer with Python, FastAPI, and Docker experience."
+        top_k:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+          description: Number of most-similar role chunks to retrieve.
+
+    RetrievalResult:
+      type: object
+      required: [role, tools, projects, score]
+      properties:
+        role:
+          type: string
+          example: Backend Developer
+        tools:
+          type: string
+          example: "Python, FastAPI, Docker"
+        projects:
+          type: string
+          example: "LLM Evaluation Pipeline"
+        score:
+          type: number
+          format: float
+          description: L2 distance from the query embedding (lower = more similar).
+          example: 0.1823
+
+    LLMAnalysis:
+      type: object
+      required: [summary_and_ranking, fit_analysis, cover_letter]
+      properties:
+        summary_and_ranking:
+          type: string
+          description: Ranked summary of retrieved roles.
+        fit_analysis:
+          type: string
+          description: Per-role fit analysis with match %, strengths, and gaps.
+        cover_letter:
+          type: string
+          description: Tailored cover letter for the best-matched role.
+
+    MatchResponse:
+      type: object
+      required: [user_id, results, analysis]
+      properties:
+        user_id:
+          type: string
+          example: user1
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/RetrievalResult"
+        analysis:
+          $ref: "#/components/schemas/LLMAnalysis"
+
+    ValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            properties:
+              loc:
+                type: array
+                items:
+                  type: string
+              msg:
+                type: string
+              type:
+                type: string
+
+    HTTPError:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+          example: "No vector store found for user 'user1'."

@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+.venv
+env/
+ENV/
+env.bak/
+venv.bak/
+vector_store/
+uvicorn.log
+streamlit.log
+*.json
+!backend/services/rag/app/api/openapi.json
+!openapi.yaml
